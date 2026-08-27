@@ -8,7 +8,8 @@
 -- change role; objects are owned by whichever role the CLI connects as.
 
 -- DML only: no DDL, no BYPASSRLS. This is what the FastAPI backend connects as.
-create role kummo_app with login password '3bX!748fHPuFh9MN';
+-- Its password is provisioned separately according to environment: it is not committed.
+create role kummo_app with login;
 
 create schema kummo;
 grant usage on schema kummo to kummo_app;

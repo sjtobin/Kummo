@@ -39,6 +39,11 @@ supabase_migrations` — after the DDL has already run, leaving the remote half-
 whole reason the owning role was dropped; see
 `snippets/reset-hosted-migration-state.sql` for the cleanup that incident required.
 
+### `kummo_app` credentials
+During migration, the `kummo_app` user is created without a password. Database credentials are set separately for each environment and must not be committed to the repo.
+
+For local development, assign a local password to `kummo_app` once the database has been created (or reset). Then set the `DATABASE_URL` with that credential in the local `.env.local` (ignored by git) file with the assigned password.
+
 ## Layout
 
 ```
