@@ -162,7 +162,7 @@
 
       document.getElementById('dashboard-content').style.display = 'block';
       document.getElementById('business-name').innerHTML =
-        t('vendor.subheading', { name: vendor.display_name });
+        tHtml('vendor.subheading', { name: vendor.display_name });
       return loadDashboardData(vendor.id);
     }
 

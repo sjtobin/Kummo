@@ -74,6 +74,12 @@
     return undefined;
   }
 
+  function escapeHtmlText(value){
+    const element = document.createElement('span');
+    element.textContent = String(value ?? '');
+    return element.innerHTML;
+  }
+
   function interpolate(template, options) {
     return template.replace(/\{\{(\w+)\}\}/g, (whole, name) =>
       Object.prototype.hasOwnProperty.call(options, name) ? String(options[name]) : whole
@@ -88,6 +94,14 @@
       return key;
     }
     return interpolate(template, options);
+  }
+
+  function tHtml(key, options = {}) {
+    const safeOptions = {};
+    for (const [name, value] of Object.entries(options)) {
+      safeOptions[name] = name === 'defaultValue' ? value : escapeHtmlText(value);
+    }
+    return t(key, safeOptions);
   }
 
   // =============================================
@@ -185,9 +199,11 @@
   // shorthand is defined once here instead of in each file — two `const t` of
   // their own would be a redeclaration error.
   globalThis.t = t;
+  globalThis.tHtml = tHtml;
 
   globalThis.KummoI18n = {
     t,
+    tHtml,
     apply,
     setLang,
     ready,

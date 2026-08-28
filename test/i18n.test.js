@@ -81,6 +81,17 @@ describe('t', () => {
     expect(i18n.t('activity.detail_title', { title: 'Van Gogh' })).toBe('Van Gogh — Kummo');
   });
 
+  it('escapes interpolated values in HTML translations', () => {
+    const attack = '<img src=x onerror="alert(1)">';
+    const host = document.createElement('div');
+
+    host.innerHTML = i18n.tHtml('vendor.subheading', { name: attack });
+
+    expect(host.querySelector('strong')).not.toBeNull();
+    expect(host.querySelector('strong').textContent).toBe(attack);
+    expect(host.querySelector('img')).toBeNull();
+  });
+
   it('leaves a placeholder alone when no value is given', () => {
     expect(i18n.t('activity.detail_title')).toContain('{{title}}');
   });
