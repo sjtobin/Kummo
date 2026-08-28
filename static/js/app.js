@@ -685,6 +685,17 @@ function initNav() {
   }
 }
 
+function appendChatMessage(messages, label, text, className = '') {
+  const row = document.createElement('div');
+  if (className) row.className = className;
+
+  const strong = document.createElement('strong');
+  strong.textContent = label;
+
+  row.append(strong, document.createTextNode(` ${text}`));
+  messages.appendChild(row);
+}
+
 function initChatbot() {
   const fab = document.getElementById('chat-fab');
   const panel = document.getElementById('chat-panel');
@@ -696,14 +707,18 @@ function initChatbot() {
 
   document.getElementById('chat-send')?.addEventListener('click', () => {
     if (!input?.value.trim()) return;
-    messages.innerHTML += `<div><strong>${t('common.chat.you')}</strong> ${input.value}</div>`;
+
+    appendChatMessage(messages, t('common.chat.you'), input.value);
+
     // Matched in both languages: the visitor types in whichever one they read the
     // page in, and these are the words each question tends to contain.
     const question = input.value.toLowerCase();
     let reply = t('common.chat.reply_default');
     if (/buch|book/.test(question)) reply = t('common.chat.reply_booking');
     if (/klein|toddler|kind|child|3|5/.test(question)) reply = t('common.chat.reply_toddlers');
-    messages.innerHTML += `<div class="bot"><strong>${t('common.chat.bot')}</strong> ${reply}</div>`;
+
+    appendChatMessage(messages, t('common.chat.bot'), reply, 'bot');
+
     input.value = '';
     messages.scrollTop = messages.scrollHeight;
   });
