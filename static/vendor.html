@@ -179,15 +179,24 @@
 
       document.getElementById('biz-activity-count').textContent = activities.length;
 
-      document.getElementById('biz-activities').innerHTML = activities.map((a) => `
-        <tr>
-          <td>${a.title}</td>
-          <td>${a.price}€</td>
-          <td>${a.participants_max}</td>
-          <td>${a.age_group}</td>
-          <td><a href="activity.html?id=${a.id}" class="btn btn-sm btn-outline">${t('vendor.view')}</a></td>
-        </tr>
-      `).join('');
+      const table = document.getElementById('biz-activities');
+      table.replaceChildren();
+
+      for (const a of activities) {
+        const row = table.insertRow();
+
+        row.insertCell().textContent = a.title ?? '';
+        row.insertCell().textContent = `${a.price}€`;
+        row.insertCell().textContent = a.participants_max ?? '';
+        row.insertCell().textContent = a.age_group ?? '';
+
+        const actionCell = row.insertCell();
+        const link = document.createElement('a');
+        link.href = `activity.html?id=${encodeURIComponent(a.id)}`;
+        link.className = 'btn btn-sm btn-outline';
+        link.textContent = t('vendor.view');
+        actionCell.appendChild(link);
+      }
     }
 
     // =============================================
