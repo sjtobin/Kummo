@@ -629,25 +629,45 @@ function initAdminDashboard() {
 
   const bizTable = document.getElementById('admin-businesses');
   if (bizTable) {
-    bizTable.innerHTML = vendors
-      .map((b) => {
-        const count = activities.filter((a) => a.vendor_id === b.id).length;
-        return `<tr><td>${b.name}</td><td>${b.email}</td><td>${count}</td><td>—</td></tr>`;
-      })
-      .join('');
+    bizTable.replaceChildren();
+
+    for (const b of vendors) {
+      const row = bizTable.insertRow();
+      const count = activities.filter((a) => a.vendor_id === b.id).length;
+
+      row.insertCell().textContent = String(b.name ?? '');
+      row.insertCell().textContent = String(b.email ?? '');
+      row.insertCell().textContent = String(count);
+      row.insertCell().textContent = '—';
+    }
   }
 
   const resTable = document.getElementById('admin-reservations');
   if (resTable) {
     const bookings = getBookings();
-    resTable.innerHTML = bookings.length
-      ? bookings
-          .map((b) => {
-            const act = activities.find((a) => a.id === b.activityId);
-            return `<tr><td>—</td><td>${act ? enrichActivity(act).vendorName : '—'}</td><td>${b.activityName}</td><td>${b.name}</td><td>${b.slot}</td><td>${bookingStatusLabel(b.status)}</td><td>${b.total} €</td></tr>`;
-          })
-          .join('')
-      : `<tr><td colspan="7">${t('admin.no_bookings')}</td></tr>`;
+    resTable.replaceChildren();
+
+    if (bookings.length) {
+      for (const b of bookings) {
+        const act = activities.find((a) => a.id === b.activityId);
+        const row = resTable.insertRow();
+
+        row.insertCell().textContent = '—';
+        row.insertCell().textContent = act
+          ? String(enrichActivity(act).vendorName ?? '')
+          : '—';
+        row.insertCell().textContent = String(b.activityName ?? '');
+        row.insertCell().textContent = String(b.name ?? '');
+        row.insertCell().textContent = String(b.slot ?? '');
+        row.insertCell().textContent = bookingStatusLabel(b.status);
+        row.insertCell().textContent = `${b.total ?? ''} €`;
+      }
+    } else {
+      const row = resTable.insertRow();
+      const cell = row.insertCell();
+      cell.colSpan = 7;
+      cell.textContent = t('admin.no_bookings');
+    }
   }
 }
 
