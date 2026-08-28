@@ -398,22 +398,50 @@ function openBookingModal(activity) {
     });
   }
 
-  const slots = (activity.disponibilites || [])
-    .map((s) => `<option value="${s}">${s}</option>`)
-    .join('');
-
   overlay.innerHTML = `
     <div class="modal" role="dialog" aria-labelledby="booking-title">
-      <h2 id="booking-title">${t('booking.modal_title', { title: activity.title })}</h2>
-      <form id="booking-form">
-        <div class="form-row"><label for="b-name">${t('booking.name')}</label><input id="b-name" name="name" required autocomplete="name"></div>
-        <div class="form-row"><label for="b-email">${t('booking.email')}</label><input id="b-email" name="email" type="email" required autocomplete="email"></div>
-        <div class="form-row"><label for="b-slot">${t('booking.slot')}</label><select id="b-slot" name="slot" required>${slots}</select></div>
-        <div class="form-row"><label for="b-qty">${t('booking.people')}</label><input id="b-qty" name="qty" type="number" min="1" max="${activity.participants_max}" value="2" required></div>
-        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:0.5rem">${t('booking.submit', { price: activity.price })}</button>
-        <button type="button" class="btn btn-outline" style="width:100%;margin-top:0.5rem" data-close>${t('booking.cancel')}</button>
-      </form>
-    </div>`;
+    <h2 id="booking-title"></h2>
+    <form id="booking-form">
+      <div class="form-row">
+        <label for="b-name"></label>
+        <input id="b-name" name="name" required autocomplete="name">
+      </div>
+      <div class="form-row">
+        <label for="b-email"></label>
+        <input id="b-email" name="email" type="email" required autocomplete="email">
+      </div>
+      <div class="form-row">
+        <label for="b-slot"></label>
+        <select id="b-slot" name="slot" required></select>
+      </div>
+      <div class="form-row">
+        <label for="b-qty"></label>
+        <input id="b-qty" name="qty" type="number" min="1" value="2" required>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:0.5rem"></button>
+      <button type="button" class="btn btn-outline" style="width:100%;margin-top:0.5rem" data-close></button>
+    </form>
+  </div>`;
+
+  overlay.querySelector('#booking-title').textContent =
+    t('booking.modal_title', { title: activity.title });
+  overlay.querySelector('label[for="b-name"]').textContent = t('booking.name');
+  overlay.querySelector('label[for="b-email"]').textContent = t('booking.email');
+  overlay.querySelector('label[for="b-slot"]').textContent = t('booking.slot');
+  overlay.querySelector('label[for="b-qty"]').textContent = t('booking.people');
+
+  const slotSelect = overlay.querySelector('#b-slot');
+  for (const value of activity.disponibilites || []) {
+    const option = document.createElement('option');
+    option.value = String(value ?? '');
+    option.textContent = String(value ?? '');
+    slotSelect.appendChild(option);
+  }
+
+  overlay.querySelector('#b-qty').max = String(activity.participants_max ?? '');
+  overlay.querySelector('button[type="submit"]').textContent =
+    t('booking.submit', { price: activity.price });
+  overlay.querySelector('[data-close]').textContent = t('booking.cancel');
 
   overlay.classList.add('open');
   overlay.querySelector('[data-close]').addEventListener('click', () => overlay.classList.remove('open'));
