@@ -98,22 +98,51 @@ function enrichActivity(activity) {
 // =============================================
 // 4. Build the HTML for an activity card
 // =============================================
+function safeHttpUrl(value, fallback = '') {
+  try {
+    const url = new URL(String(value ?? ''), window.location.href);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+const ACTIVITY_CARD_TEMPLATE = document.createElement('template');
+ACTIVITY_CARD_TEMPLATE.innerHTML = `
+  <article class="activity-card">
+    <img loading="lazy">
+    <div class="activity-card-body">
+      <div class="activity-meta">
+        <span class="tag" data-field="vendor"></span>
+        <span class="tag tag-age" data-field="age"></span>
+      </div>
+      <h3 data-field="title"></h3>
+      <p data-field="address"></p>
+      <p data-field="details"></p>
+      <a class="btn btn-primary btn-sm stretched-link"></a>
+    </div>
+  </article>`;
+
 function activityCardHtml(activity) {
   const a = enrichActivity(activity);
-  return `
-    <article class="activity-card">
-      <img src="${a.picture}" alt="${a.title}" loading="lazy">
-      <div class="activity-card-body">
-        <div class="activity-meta">
-          <span class="tag">${a.vendorName}</span>
-          <span class="tag tag-age">${a.age_group}</span>
-        </div>
-        <h3>${a.title}</h3>
-        <p>📍 ${a.address}</p>
-        <p>💰 ${a.price} € · 👥 ${a.participants_max} · ⏳ ${a.duration}</p>
-        <a class="btn btn-primary btn-sm stretched-link" href="activity.html?id=${a.id}">${t('activity.card_cta')}</a>
-      </div>
-    </article>`;
+  const card = ACTIVITY_CARD_TEMPLATE.content.firstElementChild.cloneNode(true);
+
+  const image = card.querySelector('img');
+  image.src = safeHttpUrl(a.picture, 'https://via.placeholder.com/400x250');
+  image.alt = String(a.title ?? '');
+
+  card.querySelector('[data-field="vendor"]').textContent = String(a.vendorName ?? '');
+  card.querySelector('[data-field="age"]').textContent = String(a.age_group ?? '');
+  card.querySelector('[data-field="title"]').textContent = String(a.title ?? '');
+  card.querySelector('[data-field="address"]').textContent = `📍 ${a.address ?? ''}`;
+  card.querySelector('[data-field="details"]').textContent =
+    `💰 ${a.price ?? ''} € · 👥 ${a.participants_max ?? ''} · ⏳ ${a.duration ?? ''}`;
+
+  const link = card.querySelector('a');
+  link.href = `activity.html?id=${encodeURIComponent(a.id ?? '')}`;
+  link.textContent = t('activity.card_cta');
+
+  return card;
 }
 
 // =============================================
@@ -124,10 +153,13 @@ function renderActivityGrid(containerId, list) {
   if (!container) return;
 
   if (!list.length) {
-    container.innerHTML = `<p class="empty-state">${t('activity.none_found')}</p>`;
+    const empty = document.createElement('p');
+    empty.className = 'empty-state';
+    empty.textContent = t('activity.none_found');
+    container.replaceChildren(empty);
     return;
   }
-  container.innerHTML = list.map(activityCardHtml).join('');
+  container.replaceChildren(...list.map(activityCardHtml));
 }
 
 function showActivityList(containerId, list) {

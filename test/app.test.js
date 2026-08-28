@@ -74,12 +74,25 @@ describe('enrichActivity', () => {
 
 describe('activityCardHtml', () => {
   it('interpolates values and never emits a literal ${ (regression: escaped template literals)', () => {
-    const html = app.activityCardHtml(activities[0]);
-    expect(html).toContain('Van Gogh Malkurs');
-    expect(html).toContain('Kreuzberg, Berlin');
-    expect(html).toContain('25 €');
-    expect(html).toContain('Lila Farbe');
-    expect(html).not.toContain('${');
+    const card = app.activityCardHtml(activities[0]);
+    expect(card.textContent).toContain('Van Gogh Malkurs');
+    expect(card.textContent).toContain('Kreuzberg, Berlin');
+    expect(card.textContent).toContain('25 €');
+    expect(card.textContent).toContain('Lila Farbe');
+    expect(card.textContent).not.toContain('${');
+  });
+
+  it('renders activity text as text rather than HTML', () => {
+    const attack = '<img src=x onerror="alert(1)">';
+    const card = app.activityCardHtml({
+      ...activities[0],
+      title: attack,
+    });
+
+    const title = card.querySelector('[data-field="title"]');
+
+    expect(title.textContent).toBe(attack);
+    expect(title.querySelector('img')).toBeNull();
   });
 });
 
