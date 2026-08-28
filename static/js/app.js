@@ -550,12 +550,47 @@ async function initClientPage() {
 
   const bookingsEl = document.getElementById('booking-history');
   const bookings = getBookings();
+
   if (bookingsEl) {
-    bookingsEl.innerHTML = bookings.length
-      ? `<div class="table-wrap"><table><thead><tr><th>${t('client.table.activity')}</th><th>${t('client.table.slot')}</th><th>${t('client.table.price')}</th><th>${t('client.table.status')}</th></tr></thead><tbody>
-        ${bookings.map((b) => `<tr><td>${b.activityName}</td><td>${b.slot}</td><td>${b.total} €</td><td>${bookingStatusLabel(b.status)}</td></tr>`).join('')}
-      </tbody></table></div>`
-      : `<p>${t('client.no_bookings')}</p>`;
+    bookingsEl.replaceChildren();
+
+    if (bookings.length) {
+      const wrap = document.createElement('div');
+      wrap.className = 'table-wrap';
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headerRow = thead.insertRow();
+
+      for (const label of [
+        t('client.table.activity'),
+        t('client.table.slot'),
+        t('client.table.price'),
+        t('client.table.status'),
+      ]) {
+        const th = document.createElement('th');
+        th.textContent = label;
+        headerRow.appendChild(th);
+      }
+
+      const tbody = document.createElement('tbody');
+
+      for (const b of bookings) {
+        const row = tbody.insertRow();
+        row.insertCell().textContent = String(b.activityName ?? '');
+        row.insertCell().textContent = String(b.slot ?? '');
+        row.insertCell().textContent = `${b.total ?? ''} €`;
+        row.insertCell().textContent = bookingStatusLabel(b.status);
+      }
+
+      table.append(thead, tbody);
+      wrap.appendChild(table);
+      bookingsEl.appendChild(wrap);
+    } else {
+      const empty = document.createElement('p');
+      empty.textContent = t('client.no_bookings');
+      bookingsEl.appendChild(empty);
+    }
   }
 
   const favIds = getFavorites();
