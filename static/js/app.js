@@ -294,44 +294,85 @@ function showActivityDetail() {
 
   container.innerHTML = `
     <div class="detail-hero">
-      <img class="gallery-main" src="${a.picture}" alt="${a.title}">
+      <img class="gallery-main">
       <div class="detail-info">
         <div class="activity-meta">
-          <span class="tag">${a.vendorName}</span>
-          <span class="tag tag-age">${a.age_group}</span>
+          <span class="tag" data-field="vendor"></span>
+          <span class="tag tag-age" data-field="age"></span>
         </div>
-        <h1>${a.title}</h1>
-        <p class="rating">⭐ ${a.rating || t('activity.not_rated')}</p>
-        <p class="price-large">${a.price} € <span style="font-size:1rem;font-weight:600">${t('activity.per_person')}</span></p>
-        <p>📍 ${a.address}</p>
-        <p>${t('activity.capacity', { count: a.participants_max, duration: a.duration })}</p>
-        <p>${a.description}</p>
+        <h1 data-field="title"></h1>
+        <p class="rating" data-field="rating"></p>
+        <p class="price-large">
+          <span data-field="price"></span> €
+          <span data-field="per-person" style="font-size:1rem;font-weight:600"></span>
+        </p>
+        <p data-field="address"></p>
+        <p data-field="capacity"></p>
+        <p data-field="description"></p>
         <div style="margin-top:1.5rem">
-          <h3>${t('activity.slots_title')}</h3>
-          <div class="disponibilites">
-            ${(a.disponibilites || []).map((d) => `<span class="tag">${d}</span>`).join('')}
-          </div>
+          <h3 data-field="slots-title"></h3>
+          <div class="disponibilites" data-field="slots"></div>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-top:1.5rem">
-          <button type="button" class="btn btn-primary" id="open-booking">${t('activity.book_now')}</button>
-          <button type="button" class="btn btn-outline" id="toggle-fav">${favoriteLabel(a.id)}</button>
+          <button type="button" class="btn btn-primary" id="open-booking"></button>
+          <button type="button" class="btn btn-outline" id="toggle-fav"></button>
         </div>
       </div>
     </div>
     <div class="map-panel">
-      <div class="map-placeholder">${t('activity.map_label', { address: a.address })}</div>
+      <div class="map-placeholder" data-field="map"></div>
     </div>
     <section class="section">
-      <h2>${t('activity.similar_title')}</h2>
+      <h2 data-field="similar-title"></h2>
       <div class="activity-grid" id="similar-activities"></div>
     </section>`;
+
+  const image = container.querySelector('.gallery-main');
+  image.src = safeHttpUrl(a.picture, 'https://via.placeholder.com/400x250');
+  image.alt = String(a.title ?? '');
+
+  container.querySelector('[data-field="vendor"]').textContent = String(a.vendorName ?? '');
+  container.querySelector('[data-field="age"]').textContent = String(a.age_group ?? '');
+  container.querySelector('[data-field="title"]').textContent = String(a.title ?? '');
+  container.querySelector('[data-field="rating"]').textContent = `⭐ ${a.rating || t('activity.not_rated')}`;
+  container.querySelector('[data-field="price"]').textContent = String(a.price ?? '');
+  container.querySelector('[data-field="per-person"]').textContent = t('activity.per_person');
+  container.querySelector('[data-field="address"]').textContent = `📍 ${a.address ?? ''}`;
+  container.querySelector('[data-field="capacity"]').textContent =
+    t('activity.capacity', {
+      count: a.participants_max,
+      duration: a.duration,
+    });
+  container.querySelector('[data-field="description"]').textContent = String(a.description ?? '');
+  container.querySelector('[data-field="slots-title"]').textContent = t('activity.slots_title');
+
+  const slots = container.querySelector('[data-field="slots"]');
+  for (const value of a.disponibilites || []) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = String(value ?? '');
+    slots.appendChild(tag);
+  }
+
+  container.querySelector('#open-booking').textContent = t('activity.book_now');
+  container.querySelector('#toggle-fav').textContent = favoriteLabel(a.id);
+  container.querySelector('[data-field="map"]').textContent =
+    t('activity.map_label', { address: a.address ?? '' });
+  container.querySelector('[data-field="similar-title"]').textContent = t('activity.similar_title');
 
   const similar = activities
     .filter((x) => x.id !== activity.id && x.vendor_id === activity.vendor_id)
     .slice(0, 3);
-  renderActivityGrid('similar-activities', similar.length ? similar : activities.filter((x) => x.id !== activity.id).slice(0, 3));
+
+  renderActivityGrid(
+    'similar-activities',
+    similar.length
+      ? similar
+      : activities.filter((x) => x.id !== activity.id).slice(0, 3)
+  );
 
   document.getElementById('open-booking')?.addEventListener('click', () => openBookingModal(a));
+
   document.getElementById('toggle-fav')?.addEventListener('click', (e) => {
     toggleFavorite(a.id);
     e.target.textContent = favoriteLabel(a.id);
