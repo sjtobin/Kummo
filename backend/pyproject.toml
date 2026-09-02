@@ -1,6 +1,6 @@
 [project]
 name = "kummo"
-version = "0.1.0"
+version = "0.2.0"
 description = "Kummo API backend"
 requires-python = ">=3.12"
 dependencies = [

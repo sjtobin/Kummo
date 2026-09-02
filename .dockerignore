@@ -1,0 +1,36 @@
+# Everything the image does not need. Keep this tight: the build context is the
+# repo root because the image needs both backend/ and static/.
+.git
+.gitignore
+.env*
+!backend/.env.example
+
+node_modules/
+coverage/
+site/
+Docs/
+test/
+supabase/
+*.md
+!README.md
+
+start-kummo.sh
+start-kummo.bat
+docs-serve.sh
+docs-serve.bat
+mkdocs.yml
+package.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+vitest.config.js
+
+backend/.venv/
+backend/tests/
+backend/.pytest_cache/
+**/__pycache__/
+**/*.pyc
+.DS_Store
+
+Dockerfile
+.dockerignore
+compose.yaml

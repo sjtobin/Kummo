@@ -1,6 +1,7 @@
 from functools import lru_cache
+from pathlib import Path
 
-from pydantic import model_validator
+from pydantic import DirectoryPath, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,6 +22,12 @@ class Settings(BaseSettings):
     app_base_url: str = "http://localhost:8000"
     # Session cookies are HttpOnly always; Secure only where there is TLS to require.
     cookie_secure: bool = False
+
+    # Absolute path to the site served at /. Defaults to the repo's static/, which is
+    # where a source checkout keeps it; override with STATIC_DIR wherever a deployment
+    # lays it out elsewhere (the container puts it at /app/static). DirectoryPath
+    # validates it exists, so a wrong path fails at startup instead of serving 404s.
+    static_dir: DirectoryPath = Path(__file__).resolve().parents[3] / "static"
 
     # Root log level. DEBUG is loud — SQLAlchemy and httpx both talk at that level.
     log_level: str = "INFO"

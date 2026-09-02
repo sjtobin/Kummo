@@ -54,6 +54,40 @@ uv sync --all-groups
 uv run --env-file ../.env.local fastapi dev src/kummo/main.py
 ```
 
+## Running in Docker
+
+The image carries the FastAPI backend and the static site, and serves both on port 8000.
+It expects a Supabase project that already exists — the container starts no database and
+applies no migrations, which stay a host-side Supabase CLI task.
+
+```sh
+docker build -t kummo .
+cp .env.prod .env                 # compose reads .env
+docker compose up --build
+```
+
+Or without compose:
+
+```sh
+docker run --rm -p 8000:8000 --env-file .env.prod kummo
+```
+
+| Variable | |
+|---|---|
+| `SUPABASE_URL`, `SUPABASE_API_KEY`, `DATABASE_URL` | required, as everywhere else |
+| `APP_BASE_URL` | where the app is served; used to build the OAuth callback URL |
+| `COOKIE_SECURE` | must be `true` once `APP_BASE_URL` is `https` — the backend refuses to start otherwise |
+| `LOG_LEVEL` | defaults to `INFO` |
+| `STATIC_DIR` | already set to `/app/static` in the image; only change it if you mount the site elsewhere |
+
+**`.env.local` does not work unchanged in a container.** Its `SUPABASE_URL` and
+`DATABASE_URL` name `127.0.0.1`, which inside the container is the container itself, not
+the host's Supabase stack. Cloud values (`.env.prod`) work as they are.
+
+Unlike the local Supabase stack, this image builds and runs fine under Podman
+(`podman build -t kummo .`) — the Podman caveat above is about `supabase start`, not about Kummo's
+own image.
+
 ## Database
 
 The Supabase CLI is the database task runner. `supabase/migrations/` is the single DDL chain —
@@ -105,6 +139,53 @@ uv run pytest -m integration         # real queries against the local Supabase P
 pnpm install && pnpm test            # frontend regression tests (Vitest + jsdom)
 pnpm run test:watch
 ```
+
+## Releasing
+
+The version lives in four files (`backend/pyproject.toml`, `backend/uv.lock`, `package.json`,
+and the `version=` FastAPI serves at `/docs`). One command moves them together:
+
+```sh
+./bump-version.sh minor    # 0.2.0 -> 0.3.0
+./bump-version.sh 1.0.0    # or set it outright
+```
+
+`uv version` decides the number and re-locks; the script copies it into the files uv does not
+know about, then prints the diff for review. It refuses to run when a version file already has
+uncommitted changes, so the result is always a clean `chore(release): X.Y.Z` commit.
+
+## Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push to `main` and every
+pull request, in three parallel jobs: the backend route tests, the frontend Vitest suite, and an
+image build followed by a smoke test that starts the container and waits for `GET /` to serve the
+site. The integration tests are **not** part of it — they need a live Supabase stack, so they stay
+a local task (see *Tests* above).
+
+A workflow edit can be checked before pushing, with two tools neither the app nor the tests
+need (on Arch: `sudo pacman -S actionlint act`):
+
+```sh
+actionlint                     # static check: invalid keys, expressions, shellcheck on `run:`
+act pull_request -j backend    # actually run a job, in containers
+act pull_request -j frontend
+```
+
+`actionlint` is the cheap one and catches most wiring mistakes; reach for `act` when the *shape*
+of the workflow changed (triggers, `env:` plumbing, job structure). For the job contents it adds
+little — it runs the same `uv run pytest -m 'not integration'` and `pnpm test` documented above.
+
+> **`act` needs a Docker daemon.** Under Podman, expose the socket first:
+> `systemctl --user start podman.socket` and
+> `export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock`. This is unrelated to the
+> `supabase start` caveat at the top — that one no socket fixes.
+>
+> **`-j image` does not work locally.** The job builds a container (so it would need
+> Docker-in-Docker) and its `type=gha` layer cache has no backend outside GitHub. Build and smoke
+> test it by hand instead — see *Running in Docker* above.
+>
+> The caching actions degrade to no-ops off GitHub, so a green `act` run says nothing about
+> whether the real cache is hit.
 
 ## Translations
 

@@ -1,6 +1,6 @@
 {
   "name": "kummo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Kummo – Entdeckung & Buchung familienfreundlicher Aktivitäten (statische Website + Supabase)",
   "packageManager": "pnpm@11.20.0",

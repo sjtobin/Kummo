@@ -1,7 +1,6 @@
 import logging
 import time
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
@@ -42,7 +41,7 @@ async def lifespan(app: FastAPI):
     reset_verifier_client()
 
 
-app = FastAPI(title="Kummo API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Kummo API", version="0.2.0", lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -110,6 +109,10 @@ app.include_router(activities.router, prefix="/api")
 # keeping it out of the prefix keeps it out of the per-call request log.
 app.include_router(metrics.router)
 
-# Serve static/ last so API routes take precedence
-STATIC_DIR = Path(__file__).resolve().parents[3] / "static"
-app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+# Serve the site last so API routes take precedence. The directory is configuration
+# (STATIC_DIR), not a walk up from this file, so the deployment decides the layout.
+app.mount(
+    "/",
+    StaticFiles(directory=get_settings().static_dir, html=True),
+    name="static",
+)

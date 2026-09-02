@@ -44,6 +44,16 @@ on port 8000. No Docker required. Migrations are not applied automatically in th
 Every `.env.*` file must contain `SUPABASE_URL`, `SUPABASE_API_KEY` and `DATABASE_URL` —
 see `backend/.env.example`.
 
+### Container
+`docker compose up --build` (compose reads `.env` — `cp .env.prod .env`), or
+`docker run -p 8000:8000 --env-file .env.prod kummo`. The image runs `fastapi run` as a
+non-root user and serves the site from `STATIC_DIR`, set to `/app/static` in the image.
+
+It starts **no database and applies no migrations** — those stay Supabase CLI tasks on the
+host. `.env.local` does not work unchanged inside a container: its `127.0.0.1` is the
+container itself, not the host's Supabase stack. Podman builds and runs the image fine; the
+Podman caveat in `README.md` is about `supabase start`, not this image.
+
 ### Manual start (either mode)
 ```bash
 # Export credentials first
@@ -74,6 +84,38 @@ Then open `http://localhost:8000`. Do not open HTML files with `file://` — the
 - `pnpm install` once, then `pnpm test` (single run) or `pnpm run test:watch`.
 - Tests live in `test/app.test.js` and cover `app.js`'s pure logic (filtering, search-URL building, card HTML, vendor enrichment, localStorage helpers) — including guards for the bugs already fixed (escaped `${}` template literals, undefined `STORAGE_*` constants).
 - `app.js` is a classic browser script, so it can't be `import`ed normally. Its bottom block attaches a `globalThis.KummoApp` API (incl. a test-only `__setData(vendors, activities)` to inject fixture data). This is inert in the browser. When adding a function worth testing, add it to that export object.
+
+## Versioning
+
+**A change to the source bumps the version, in the same commit.** Use the helper — it moves
+all four places at once and refuses to run on a dirty version file:
+
+```sh
+./bump-version.sh minor    # 0.2.0 -> 0.3.0
+./bump-version.sh 1.0.0    # or set it outright
+```
+
+`uv version` owns the number (it rewrites `backend/pyproject.toml` and re-locks); the script
+copies what uv landed on into the two files uv knows nothing about. Doing it by hand means
+touching all four, since nothing generates one from another:
+
+| File | Field |
+|---|---|
+| `backend/pyproject.toml` | `version` — the one uv edits |
+| `backend/uv.lock` | the `kummo` package entry; **CI runs `uv sync --locked`, so a stale lock fails the build** |
+| `package.json` | `"version"` |
+| `backend/src/kummo/main.py` | the `version=` argument to `FastAPI(...)` — this is what `/docs` and the OpenAPI schema advertise |
+
+Semantic versioning, keyed to the conventional-commit type the message already carries:
+
+- `feat(...)` → minor (`0.1.0` → `0.2.0`)
+- `fix(...)`, `refactor(...)`, `perf(...)` → patch (`0.1.0` → `0.1.1`)
+- a breaking change to the API or the schema → major
+- `docs:`, `chore:`, `test:`, `ci(...)` → **no bump**: they change nothing a caller can observe
+
+**One bump per feature branch, not per commit.** Branches are squashed on merge, so a bump on
+every commit would produce versions no merged commit corresponds to. Bump once, on the commit
+that carries the behaviour change; later commits on the same branch leave it alone.
 
 ## Architecture
 
@@ -153,6 +195,9 @@ Kummo/
   supabase/                    # Supabase CLI config, auth/extension migrations, seed.sql
     snippets/                  # one-off SQL run by hand against the hosted project
   test/                        # Vitest frontend tests
+  Dockerfile                   # backend + static site in one image, served on :8000
+  .dockerignore                # build context is the repo root, so keep it tight
+  compose.yaml                 # runs that image against an existing Supabase project
   backend/                     # FastAPI Python backend
     pyproject.toml             # uv project config
     .python-version            # pins Python 3.12
@@ -190,6 +235,12 @@ the CWD, so it only holds while you are in `backend/`.
 
 This stays compatible with `start-kummo.sh`, which exports the variables itself: uv only sets what
 is not already in the environment, and pydantic-settings prefers the environment over the file.
+
+**The site's location is configuration, not a path walk.** `Settings.static_dir` (env
+`STATIC_DIR`) is what `main.py` mounts at `/`. It defaults to the repo's `static/`, so a
+source checkout needs nothing; the image overrides it. It is a pydantic `DirectoryPath`, so a
+wrong value fails at startup instead of 404-ing every page. If you find
+`Path(__file__).parents[3]` at the mount, it is stale.
 
 ## Backend conventions
 

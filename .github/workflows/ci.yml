@@ -1,0 +1,94 @@
+# Runs on every push and pull request: the two test suites and an image build.
+#
+# Integration tests are deliberately not here — they need a live Supabase stack
+# (`supabase start` plus `migration up`), which is a host task, not a CI one.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    # The real credentials live in untracked .env.* files; the route tests never
+    # connect, they only need Settings' required fields to be present.
+    env:
+      SUPABASE_URL: http://127.0.0.1:54321
+      SUPABASE_API_KEY: ci-anon-key
+      DATABASE_URL: postgresql+asyncpg://kummo_app:ci@127.0.0.1:54322/postgres
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.0.1  # no floating major tag is published
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install the locked environment
+        working-directory: backend
+        run: uv sync --locked --all-groups
+
+      - name: Run the route tests
+        working-directory: backend
+        run: uv run pytest -m 'not integration'
+
+  frontend:
+    name: Frontend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm test
+
+  image:
+    name: Build the image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      # Build only: the image is not pushed anywhere yet, so this is a guard that
+      # the Dockerfile still resolves and the site is still copied in.
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          load: true
+          tags: kummo:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Check the image starts and serves the site
+        run: |
+          docker run -d --name kummo-ci -p 8000:8000 \
+            -e SUPABASE_URL=http://127.0.0.1:54321 \
+            -e SUPABASE_API_KEY=ci-anon-key \
+            -e DATABASE_URL=postgresql+asyncpg://kummo_app:ci@127.0.0.1:54322/postgres \
+            kummo:ci
+          for _ in $(seq 30); do
+            if curl -fsS http://localhost:8000/ -o /dev/null; then
+              echo "the site answered"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "the container never served the site"
+          docker logs kummo-ci
+          exit 1

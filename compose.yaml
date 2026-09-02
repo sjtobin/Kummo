@@ -1,0 +1,19 @@
+# Runs the Kummo image against an already-running Supabase project. The database and
+# GoTrue are not started here: migrations stay a host-side Supabase CLI task.
+services:
+  kummo:
+    build: .
+    image: kummo:latest
+    # Compose reads `.env`; copy the environment you want into place
+    # (`cp .env.prod .env`) or point elsewhere with COMPOSE_ENV_FILES.
+    #
+    # Cloud values work as they are. `.env.local` does not: its DATABASE_URL and
+    # SUPABASE_URL name 127.0.0.1, which inside the container is the container itself,
+    # not the host's Supabase stack.
+    #
+    # APP_BASE_URL and COOKIE_SECURE must agree — an https base URL with
+    # COOKIE_SECURE=false is refused at startup rather than sent in cleartext.
+    env_file: .env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
