@@ -46,6 +46,8 @@
     "keyword": "Stichwort",
     "keyword_placeholder": "z. B. Malen, Zoo, Töpfern…",
     "search_placeholder": "Suche…",
+    "location": "Ort",
+    "location_placeholder": "z.B. Mitte",
     "age_group": "Altersgruppe",
     "category": "Kategorie",
     "max_price": "Max. Preis (€)",

@@ -141,10 +141,16 @@ function filterActivities(filters) {
   return activities.filter((activity) => {
     const enriched = enrichActivity(activity);
     const q = (filters.q || '').toLowerCase().trim();
+    const location = (filters.location || '').toLowerCase().trim();
 
     if (q) {
       const haystack = `${activity.title} ${activity.description} ${enriched.vendorName}`.toLowerCase();
       if (!haystack.includes(q)) return false;
+    }
+
+    if (location) {
+      const address = (enriched.address || '').toLowerCase();
+      if (!address.includes(location)) return false;
     }
 
     if (filters.age && filters.age !== 'all') {
@@ -180,6 +186,7 @@ function readFiltersFromForm(form) {
   const fd = new FormData(form);
   return {
     q: fd.get('q') || '',
+    location: fd.get('location') || '',
     age: fd.get('age') || 'all',
     category: fd.get('category') || 'all',
     maxPrice: fd.get('maxPrice') || '',
@@ -208,6 +215,7 @@ function initSearchPage() {
   const params = new URLSearchParams(window.location.search);
   const filters = {
     q: params.get('q') || '',
+    location: params.get('location') || '',
     category: params.get('category') || 'all',
     age: params.get('age') || 'all',
     maxPrice: params.get('maxPrice') || '',
@@ -216,6 +224,7 @@ function initSearchPage() {
   const form = document.getElementById('filter-form');
   if (form) {
     if (filters.q) form.querySelector('[name="q"]').value = filters.q;
+    if (filters.location) form.querySelector('[name="location"]').value = filters.location;
     if (filters.category) form.querySelector('[name="category"]').value = filters.category;
     if (filters.age) form.querySelector('[name="age"]').value = filters.age;
     if (filters.maxPrice) form.querySelector('[name="maxPrice"]').value = filters.maxPrice;

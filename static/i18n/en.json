@@ -46,6 +46,8 @@
     "keyword": "Keyword",
     "keyword_placeholder": "e.g. painting, zoo, pottery…",
     "search_placeholder": "Search…",
+    "location": "Location",
+    "location_placeholder": "e.g. Mitte",
     "age_group": "Age group",
     "category": "Category",
     "max_price": "Max. price (€)",
