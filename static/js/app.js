@@ -111,7 +111,17 @@ function activityCardHtml(activity) {
         <h3>${a.title}</h3>
         <p>📍 ${a.address}</p>
         <p>💰 ${a.price} € · 👥 ${a.participants_max} · ⏳ ${a.duration}</p>
-        <a class="btn btn-primary btn-sm stretched-link" href="activity.html?id=${a.id}">${t('activity.card_cta')}</a>
+        <div class="activity-card-actions">
+        <a class="btn btn-outline btn-sm" href="activity.html?id=${a.id}">
+          ${t('activity.card_cta')}
+        </a>
+        <button
+          type="button"
+          class="btn btn-primary btn-sm activity-book-btn"
+          data-activity-id="${a.id}">
+          ${t('activity.card_book')}
+        </button>
+      </div>
       </div>
     </article>`;
 }
@@ -128,6 +138,17 @@ function renderActivityGrid(containerId, list) {
     return;
   }
   container.innerHTML = list.map(activityCardHtml).join('');
+  container.querySelectorAll('.activity-book-btn').forEach((button) => {
+    button.addEventListener('click', () => {
+      const activity = list.find(
+        (a) => String(a.id) === button.dataset.activityId
+      );
+  
+      if (activity) {
+        openBookingModal(activity);
+      }
+    });
+  });
 }
 
 function showActivityList(containerId, list) {
