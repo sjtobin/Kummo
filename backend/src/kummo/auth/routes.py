@@ -308,7 +308,7 @@ async def logout(request: Request) -> Response:
 
     response = Response(status_code=204)
     cookies.clear_session_cookies(response)
-    cookies.clear_oauth_state(response)
+    cookies.clear_oauth_verifier(response)
     metrics.record_auth_event(metrics.AUTH_LOGOUT)
     return response
 
@@ -377,7 +377,7 @@ async def start_oauth(
     )
     metrics.record_auth_event(metrics.AUTH_OAUTH_START)
     response = RedirectResponse(redirect.url, status_code=307)
-    cookies.set_oauth_state(response, redirect.code_verifier, redirect.state)
+    cookies.set_oauth_verifier(response, redirect.code_verifier)
     return response
 
 
@@ -385,21 +385,20 @@ async def start_oauth(
 async def oauth_callback(
     request: Request,
     code: str | None = None,
-    state: str | None = None,
     error: str | None = None,
     error_description: str | None = None,
     db: AsyncSession = Depends(get_session),
     settings: Settings = Depends(get_settings),
 ) -> RedirectResponse:
     base = settings.app_base_url.rstrip("/")
-    expected_state, verifier = cookies.read_oauth_state(request)
+    verifier = cookies.read_oauth_verifier(request)
 
     def back_to_login() -> RedirectResponse:
         # Every way this callback can fail ends here, so one count covers them all —
         # and the redirect is a 303 either way, which is why the status code cannot.
         metrics.record_auth_event(metrics.AUTH_OAUTH_CALLBACK, metrics.FAILURE)
         failed = RedirectResponse(f"{base}/login.html?error=oauth", status_code=303)
-        cookies.clear_oauth_state(failed)
+        cookies.clear_oauth_verifier(failed)
         return failed
 
     if code is None or not verifier:
@@ -409,16 +408,6 @@ async def oauth_callback(
             "OAuth callback without a usable code (provider error: %s)",
             _log_safe(error or error_description),
         )
-        return back_to_login()
-
-    # PKCE already stops the code being redeemed anywhere but the browser holding the
-    # verifier; `state` is what proves this callback belongs to the flow we started.
-    # Compared as bytes: `compare_digest` refuses non-ASCII str, and the query string
-    # is caller-controlled, so a stray umlaut would otherwise be a 500.
-    if not state or not secrets.compare_digest(
-        state.encode("utf-8"), expected_state.encode("utf-8")
-    ):
-        logger.warning("OAuth callback with a mismatched state; discarding the flow")
         return back_to_login()
 
     try:
@@ -434,6 +423,6 @@ async def oauth_callback(
     logger.info("Signed in %s %s via OAuth", profile.role, profile.id)
     metrics.record_auth_event(metrics.AUTH_OAUTH_CALLBACK)
     response = RedirectResponse(f"{base}{_home_of(profile)}", status_code=303)
-    cookies.clear_oauth_state(response)
+    cookies.clear_oauth_verifier(response)
     cookies.set_session_cookies(response, auth_session)
     return response

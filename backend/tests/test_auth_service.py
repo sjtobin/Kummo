@@ -154,18 +154,23 @@ def test_the_authorize_url_carries_the_provider_and_the_redirect():
     assert params["redirect_to"] == "https://kummo.test/api/auth/callback"
 
 
-def test_the_state_is_sent_and_matches_the_one_handed_back():
-    redirect = service.build_oauth_redirect("google", "https://kummo.test/api/auth/callback")
+def test_the_authorize_url_does_not_override_supabase_state():
+    redirect = service.build_oauth_redirect(
+        "google", "https://kummo.test/api/auth/callback"
+    )
 
-    assert _authorize_params(redirect)["state"] == redirect.state
+    assert "state" not in _authorize_params(redirect)
 
 
-def test_every_flow_gets_a_fresh_verifier_and_state():
-    first = service.build_oauth_redirect("google", "https://kummo.test/api/auth/callback")
-    second = service.build_oauth_redirect("google", "https://kummo.test/api/auth/callback")
+def test_every_flow_gets_a_fresh_verifier():
+    first = service.build_oauth_redirect(
+        "google", "https://kummo.test/api/auth/callback"
+    )
+    second = service.build_oauth_redirect(
+        "google", "https://kummo.test/api/auth/callback"
+    )
 
     assert first.code_verifier != second.code_verifier
-    assert first.state != second.state
 
 
 def test_the_verifier_stays_within_the_length_the_rfc_allows():

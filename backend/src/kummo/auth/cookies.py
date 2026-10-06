@@ -59,8 +59,8 @@ def clear_session_cookies(response: Response) -> None:
         _clear(response, name)
 
 
-def set_oauth_state(response: Response, code_verifier: str, state: str) -> None:
-    """Carry the PKCE verifier and the CSRF state across the provider redirect.
+def set_oauth_verifier(response: Response, code_verifier: str) -> None:
+    """Carry the PKCE verifier across the provider redirect.
 
     Both halves live in one cookie because they share a lifetime and are always read
     and cleared together. `state` is generated from `token_urlsafe`, so it never
@@ -68,13 +68,13 @@ def set_oauth_state(response: Response, code_verifier: str, state: str) -> None:
     """
     response.set_cookie(
         OAUTH_VERIFIER_COOKIE,
-        f"{state}.{code_verifier}",
+        code_verifier,
         max_age=OAUTH_STATE_MAX_AGE,
         **_base_kwargs(),
     )
 
 
-def clear_oauth_state(response: Response) -> None:
+def clear_oauth_verifier(response: Response) -> None:
     _clear(response, OAUTH_VERIFIER_COOKIE)
 
 
@@ -86,10 +86,6 @@ def read_refresh_token(request: Request) -> str:
     return request.cookies.get(REFRESH_COOKIE, "")
 
 
-def read_oauth_state(request: Request) -> tuple[str, str]:
-    """The `(state, code_verifier)` pair set before the redirect, or two empty strings."""
-    raw = request.cookies.get(OAUTH_VERIFIER_COOKIE, "")
-    state, separator, verifier = raw.partition(".")
-    if not separator or not state or not verifier:
-        return "", ""
-    return state, verifier
+def read_oauth_verifier(request: Request) -> str:
+    """The code_verifier set before the redirect, or an empty string."""
+    return request.cookies.get(OAUTH_VERIFIER_COOKIE, "")
