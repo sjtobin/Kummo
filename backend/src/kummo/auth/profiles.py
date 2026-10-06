@@ -131,6 +131,8 @@ async def ensure_vendor_profile(
     activity_type: list[str],
     phone: str | None = None,
     website: str | None = None,
+    latitude: float | None = None,
+    longitude: float | None = None,
 ) -> Profile:
     existing = await find_profile(session, identity.auth_user_id)
     if existing is not None:
@@ -140,6 +142,8 @@ async def ensure_vendor_profile(
         auth_user_id=identity.auth_user_id,
         name=name,
         address=address,
+        latitude=latitude,
+        longitude=longitude,
         activity_type=activity_type,
         email=identity.email,
         phone=phone,

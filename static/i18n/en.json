@@ -129,8 +129,9 @@
     "filters_title": "Filters",
     "map_aria": "Map of Berlin",
     "map_loading": "Loading map…",
-    "map_hint_one": "🗺️ {{count}} activity in Berlin — Google Maps to be embedded at go-live",
-    "map_hint_other": "🗺️ {{count}} activities in Berlin — Google Maps to be embedded at go-live"
+    "map_hint_one": "🗺️ {{count}} activity in Berlin",
+    "map_hint_other": "🗺️ {{count}} activities in Berlin",
+    "map_unavailable": "Map unavailable in this browser."
   },
 
   "activity": {

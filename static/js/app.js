@@ -7,6 +7,8 @@
 // optional.
 let vendors = [];
 let activities = [];
+let searchMap = null;
+let searchMapMarkers = [];
 
 // localStorage keys (preferences, bookings, favorites)
 const STORAGE_PREFS = 'kummo_prefs';
@@ -253,19 +255,99 @@ function initSearchPage() {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const f = readFiltersFromForm(form);
-      renderActivityGrid('search-results', filterActivities(f));
-      updateMapHint(filterActivities(f).length);
+      const results = filterActivities(f);
+      renderActivityGrid('search-results', results);
+      renderSearchMap(results);
     });
   }
 
   const results = filterActivities(filters);
   renderActivityGrid('search-results', results);
-  updateMapHint(results.length);
+  renderSearchMap(results);
 }
 
-function updateMapHint(count) {
-  const map = document.getElementById('map-hint');
-  if (map) map.textContent = t('search.map_hint', { count });
+function renderSearchMap(activityList) {
+  const container = document.getElementById('search-map');
+  const maplibregl = globalThis.maplibregl;
+
+  if (!container || !maplibregl) return;
+
+  if (!searchMap) {
+    try {
+      searchMap = new maplibregl.Map({
+        container,
+        style: 'https://tiles.openfreemap.org/styles/liberty',
+        center: [13.405, 52.52],
+        zoom: 10,
+      });
+
+      searchMap.addControl(
+        new maplibregl.NavigationControl(),
+        'top-right'
+      );
+    } catch (error) {
+      console.warn('Map could not be initialized:', error);
+      container.innerHTML = `<div class="map-placeholder">${t('search.map_unavailable')}</div>`;
+      return;
+    }
+  }
+
+  searchMapMarkers.forEach((marker) => marker.remove());
+  searchMapMarkers = [];
+
+  const vendorsOnMap = new Map();
+
+  activityList.forEach((activity) => {
+    const vendor = enrichActivity(activity).vendor;
+
+    if (
+      !vendor ||
+      vendor.latitude == null ||
+      vendor.longitude == null
+    ) {
+      return;
+    }
+
+    vendorsOnMap.set(vendor.id, vendor);
+  });
+
+  const bounds = new maplibregl.LngLatBounds();
+
+  vendorsOnMap.forEach((vendor) => {
+    const coordinates = [
+      vendor.longitude,
+      vendor.latitude,
+    ];
+
+    const popup = new maplibregl.Popup({
+      offset: 25,
+    }).setText(`${vendor.name} — ${vendor.address}`);
+
+    const marker = new maplibregl.Marker()
+      .setLngLat(coordinates)
+      .setPopup(popup)
+      .addTo(searchMap);
+
+    searchMapMarkers.push(marker);
+    bounds.extend(coordinates);
+  });
+
+  if (vendorsOnMap.size === 1) {
+    searchMap.flyTo({
+      center: bounds.getCenter(),
+      zoom: 13,
+    });
+  } else if (vendorsOnMap.size > 1) {
+    searchMap.fitBounds(bounds, {
+      padding: 40,
+      maxZoom: 13,
+    });
+  } else {
+    searchMap.flyTo({
+      center: [13.405, 52.52],
+      zoom: 10,
+    });
+  }
 }
 
 // =============================================
@@ -316,13 +398,17 @@ function showActivityDetail() {
         </div>
       </div>
     </div>
-    <div class="map-panel">
-      <div class="map-placeholder">${t('activity.map_label', { address: a.address })}</div>
+    <div
+      class="map-panel"
+      id="activity-map"
+      aria-label="${t('activity.map_label', { address: a.address })}">
     </div>
     <section class="section">
       <h2>${t('activity.similar_title')}</h2>
       <div class="activity-grid" id="similar-activities"></div>
     </section>`;
+
+  renderActivityMap(a);
 
   const similar = activities
     .filter((x) => x.id !== activity.id && x.vendor_id === activity.vendor_id)
@@ -334,6 +420,63 @@ function showActivityDetail() {
     toggleFavorite(a.id);
     e.target.textContent = favoriteLabel(a.id);
   });
+}
+
+function renderActivityMap(activity) {
+  const container = document.getElementById('activity-map');
+  const maplibregl = globalThis.maplibregl;
+  const vendor = activity.vendor;
+
+  if (!container) return;
+
+  if (
+    !maplibregl ||
+    !vendor ||
+    vendor.latitude == null ||
+    vendor.longitude == null
+  ) {
+    container.innerHTML = `
+      <div class="map-placeholder">
+        ${t('activity.map_label', { address: activity.address })}
+      </div>
+    `;
+    return;
+  }
+
+  const coordinates = [
+    vendor.longitude,
+    vendor.latitude,
+  ];
+
+  try {
+    const map = new maplibregl.Map({
+      container,
+      style: 'https://tiles.openfreemap.org/styles/liberty',
+      center: coordinates,
+      zoom: 14,
+    });
+
+    map.addControl(
+      new maplibregl.NavigationControl(),
+      'top-right'
+    );
+
+    new maplibregl.Marker()
+      .setLngLat(coordinates)
+      .setPopup(
+        new maplibregl.Popup({ offset: 25 })
+          .setText(`${vendor.name} — ${vendor.address}`)
+      )
+      .addTo(map);
+  } catch (error) {
+    console.warn('Activity map could not be initialized:', error);
+
+    container.innerHTML = `
+      <div class="map-placeholder">
+        ${t('activity.map_label', { address: activity.address })}
+      </div>
+    `;
+  }
 }
 
 function favoriteLabel(id) {

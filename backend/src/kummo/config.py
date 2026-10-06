@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     # Session cookies are HttpOnly always; Secure only where there is TLS to require.
     cookie_secure: bool = False
 
+    # Address geocoding. The backend resolves vendor addresses to coordinates once;
+    # MapLibre only consumes the stored latitude/longitude values.
+    geocoder_url: str = "https://nominatim.openstreetmap.org/search"
+    geocoder_user_agent: str = "Kummo"
+
     # Absolute path to the site served at /. Defaults to the repo's static/, which is
     # where a source checkout keeps it; override with STATIC_DIR wherever a deployment
     # lays it out elsewhere (the container puts it at /app/static). DirectoryPath

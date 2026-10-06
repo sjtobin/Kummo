@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/kummo.css">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@^5.24.0/dist/maplibre-gl.css">
 </head>
 <body>
   <header class="site-header">
@@ -88,8 +89,11 @@
       </aside>
 
       <div>
-        <div class="map-panel" role="img" aria-label="Map of Berlin" data-i18n-attr="aria-label:search.map_aria">
-          <div class="map-placeholder" id="map-hint" data-i18n="search.map_loading">Loading map…</div>
+        <div
+          class="map-panel"
+          id="search-map"
+          aria-label="Map of Berlin"
+          data-i18n-attr="aria-label:search.map_aria">
         </div>
         <div class="activity-grid" id="search-results"></div>
       </div>
@@ -114,6 +118,9 @@
 
   <script src="js/i18n.js" defer></script>
   <script src="js/auth.js" defer></script>
+
+  <script src="https://unpkg.com/maplibre-gl@^5.24.0/dist/maplibre-gl.js"></script>
+
   <script src="js/app.js" defer></script>
 </body>
 </html>

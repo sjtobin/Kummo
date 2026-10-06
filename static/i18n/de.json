@@ -129,8 +129,9 @@
     "filters_title": "Filter",
     "map_aria": "Karte Berlin",
     "map_loading": "Karte wird geladen…",
-    "map_hint_one": "🗺️ {{count}} Aktivität in Berlin — Google Maps beim Go-Live einbinden",
-    "map_hint_other": "🗺️ {{count}} Aktivitäten in Berlin — Google Maps beim Go-Live einbinden"
+    "map_hint_one": "🗺️ {{count}} Aktivität in Berlin",
+    "map_hint_other": "🗺️ {{count}} Aktivitäten in Berlin",
+    "map_unavailable": "Die Karte ist in diesem Browser nicht verfügbar."
   },
 
   "activity": {

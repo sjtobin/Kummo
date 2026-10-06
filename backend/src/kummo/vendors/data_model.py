@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import Text
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, REAL
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..data_model import SCHEMA, Entity, auth_user_id, created_at, primary_key
@@ -23,6 +23,8 @@ class Vendor(Entity):
     auth_user_id: Mapped[UUID | None] = auth_user_id()
     name: Mapped[str] = mapped_column(Text, nullable=False)
     address: Mapped[str] = mapped_column(Text, nullable=False)
+    latitude: Mapped[float | None] = mapped_column(REAL, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(REAL, nullable=True)
     phone: Mapped[str | None] = mapped_column(Text, nullable=True)
     email: Mapped[str] = mapped_column(Text, nullable=False)
     website: Mapped[str | None] = mapped_column(Text, nullable=True)

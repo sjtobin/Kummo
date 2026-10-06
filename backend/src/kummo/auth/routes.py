@@ -5,14 +5,14 @@ Every route here hands the caller a session through HttpOnly cookies and a plain
 not a token, not a provider error code.
 """
 
+import httpx
 import logging
-import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .. import metrics
+from .. import geocoding, metrics
 from ..config import Settings, get_settings
 from ..db import get_session
 from . import cookies, service
@@ -197,12 +197,25 @@ async def register_vendor(
     body: VendorRegistration,
     response: Response,
     db: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(get_settings),
 ) -> RegistrationResult:
     try:
         identity = await service.sign_up(body.email, body.password)
     except AuthError as error:
         metrics.record_auth_event(metrics.AUTH_REGISTER_VENDOR, metrics.FAILURE)
         raise _http_error(error) from error
+
+    latitude = None
+    longitude = None
+
+    try:
+        coordinates = await geocoding.geocode_address(body.address, settings)
+    except httpx.HTTPError:
+        logger.warning("Vendor address geocoding failed", exc_info=True)
+    else:
+        if coordinates is not None:
+            latitude = coordinates.latitude
+            longitude = coordinates.longitude
 
     profile = await ensure_vendor_profile(
         db,
@@ -212,6 +225,8 @@ async def register_vendor(
         activity_type=body.activity_type,
         phone=body.phone,
         website=body.website,
+        latitude=latitude,
+        longitude=longitude,
     )
     return _registered(profile, identity, response, metrics.AUTH_REGISTER_VENDOR)
 

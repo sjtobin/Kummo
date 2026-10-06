@@ -52,6 +52,21 @@ def make_session(**overrides) -> service.Session:
     return service.Session(**{**defaults, **overrides})
 
 
+@pytest.fixture(autouse=True)
+def stub_geocoder(monkeypatch):
+    async def fake_geocode(address, settings):
+        return routes.geocoding.Coordinates(
+            latitude=52.5001,
+            longitude=13.4002,
+        )
+
+    monkeypatch.setattr(
+        routes.geocoding,
+        "geocode_address",
+        fake_geocode,
+    )
+
+
 @pytest.fixture
 def provider(monkeypatch):
     """Replaces the identity provider with recorded, controllable behaviour."""
@@ -202,7 +217,8 @@ async def test_register_vendor_creates_vendor_profile(client, stub_session, prov
     assert response.json()["user"]["role"] == "vendor"
     assert response.json()["user"]["display_name"] == "Kreativwerkstatt"
     assert isinstance(stub_session.added[0], vendors.Vendor)
-
+    assert stub_session.added[0].latitude == 52.5001
+    assert stub_session.added[0].longitude == 13.4002
 
 async def test_register_vendor_requires_activity_type(client, stub_session, provider):
     response = await client.post(
@@ -722,7 +738,7 @@ async def test_oauth_callback_when_the_user_declines_goes_back_to_login(
     assert "error=oauth" in response.headers["location"]
 
 
-async def test_oauth_callback_clears_the_state_cookie(client, stub_session, provider):
+async def test_oauth_callback_clears_the_verifier_cookie(client, stub_session, provider):
     stub_session.scalar_results = [None, None]
     client.cookies.set(cookies.OAUTH_VERIFIER_COOKIE, OAUTH_VERIFIER_COOKIE_VALUE)
 
