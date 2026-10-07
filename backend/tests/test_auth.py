@@ -33,8 +33,8 @@ from kummo.auth.errors import (
 from kummo.auth.profiles import Profile, split_full_name
 from kummo.auth.tokens import Identity
 
-# What `set_oauth_state` writes: the state and the PKCE verifier share one cookie.
-OAUTH_STATE_COOKIE_VALUE = "state-value.verifier-value"
+# Value stored in the PKCE verifier cookie during OAuth tests.
+OAUTH_VERIFIER_COOKIE_VALUE = "verifier-value"
 from kummo.clients import data_model as clients
 from kummo.main import app
 from kummo.vendors import data_model as vendors
@@ -50,6 +50,21 @@ def make_session(**overrides) -> service.Session:
         full_name=None,
     )
     return service.Session(**{**defaults, **overrides})
+
+
+@pytest.fixture(autouse=True)
+def stub_geocoder(monkeypatch):
+    async def fake_geocode(address, settings):
+        return routes.geocoding.Coordinates(
+            latitude=52.5001,
+            longitude=13.4002,
+        )
+
+    monkeypatch.setattr(
+        routes.geocoding,
+        "geocode_address",
+        fake_geocode,
+    )
 
 
 @pytest.fixture
@@ -103,7 +118,6 @@ def provider(monkeypatch):
             return service.OAuthRedirect(
                 url=f"https://idp.test/authorize?provider={provider_name}",
                 code_verifier="verifier-value",
-                state="state-value",
             )
 
     fake = Provider()
@@ -203,7 +217,8 @@ async def test_register_vendor_creates_vendor_profile(client, stub_session, prov
     assert response.json()["user"]["role"] == "vendor"
     assert response.json()["user"]["display_name"] == "Kreativwerkstatt"
     assert isinstance(stub_session.added[0], vendors.Vendor)
-
+    assert stub_session.added[0].latitude == 52.5001
+    assert stub_session.added[0].longitude == 13.4002
 
 async def test_register_vendor_requires_activity_type(client, stub_session, provider):
     response = await client.post(
@@ -640,9 +655,8 @@ async def test_oauth_start_redirects_and_stores_the_verifier(
         if h.startswith(f"{cookies.OAUTH_VERIFIER_COOKIE}=")
     )
     assert "HttpOnly" in verifier_cookie
-    # Both halves of the flow travel in the one cookie.
-    assert OAUTH_STATE_COOKIE_VALUE in verifier_cookie
-
+    # The cookie carries only the PKCE verifier; Supabase owns OAuth state.
+    assert f"{cookies.OAUTH_VERIFIER_COOKIE}=verifier-value" in verifier_cookie
 
 async def test_oauth_start_rejects_unknown_provider(client, stub_session, provider):
     response = await client.get("/api/auth/oauth/myspace", follow_redirects=False)
@@ -653,11 +667,11 @@ async def test_oauth_start_rejects_unknown_provider(client, stub_session, provid
 async def test_oauth_callback_creates_a_client_profile(client, stub_session, provider):
     provider.session = make_session(full_name="Anna Schmidt")
     stub_session.scalar_results = [None, None]
-    client.cookies.set(cookies.OAUTH_VERIFIER_COOKIE, OAUTH_STATE_COOKIE_VALUE)
+    client.cookies.set(cookies.OAUTH_VERIFIER_COOKIE, OAUTH_VERIFIER_COOKIE_VALUE)
 
     response = await client.get(
         "/api/auth/callback",
-        params={"code": "abc", "state": "state-value"},
+        params={"code": "abc"},
         follow_redirects=False,
     )
 
@@ -682,11 +696,11 @@ async def test_oauth_callback_sends_a_vendor_to_the_dashboard(
             activity_type=["kunst"],
         ),
     ]
-    client.cookies.set(cookies.OAUTH_VERIFIER_COOKIE, OAUTH_STATE_COOKIE_VALUE)
+    client.cookies.set(cookies.OAUTH_VERIFIER_COOKIE, OAUTH_VERIFIER_COOKIE_VALUE)
 
     response = await client.get(
         "/api/auth/callback",
-        params={"code": "abc", "state": "state-value"},
+        params={"code": "abc"},
         follow_redirects=False,
     )
 
@@ -700,55 +714,8 @@ async def test_oauth_callback_without_a_verifier_goes_back_to_login(
 ):
     response = await client.get(
         "/api/auth/callback",
-        params={"code": "abc", "state": "state-value"},
+        params={"code": "abc"},
         follow_redirects=False,
-    )
-
-    assert response.status_code == 303
-    assert "error=oauth" in response.headers["location"]
-
-
-async def test_oauth_callback_with_a_mismatched_state_goes_back_to_login(
-    client, stub_session, provider
-):
-    """The state proves the callback belongs to the flow this browser started."""
-    client.cookies.set(cookies.OAUTH_VERIFIER_COOKIE, OAUTH_STATE_COOKIE_VALUE)
-
-    response = await client.get(
-        "/api/auth/callback",
-        params={"code": "abc", "state": "not-the-state-we-issued"},
-        follow_redirects=False,
-    )
-
-    assert response.status_code == 303
-    assert "error=oauth" in response.headers["location"]
-    assert stub_session.added == []
-
-
-async def test_oauth_callback_with_a_non_ascii_state_goes_back_to_login(
-    client, stub_session, provider
-):
-    """The query string is caller-controlled and `compare_digest` refuses non-ASCII
-    str, so this has to be a redirect rather than a 500."""
-    client.cookies.set(cookies.OAUTH_VERIFIER_COOKIE, OAUTH_STATE_COOKIE_VALUE)
-
-    response = await client.get(
-        "/api/auth/callback",
-        params={"code": "abc", "state": "stäte-välue"},
-        follow_redirects=False,
-    )
-
-    assert response.status_code == 303
-    assert "error=oauth" in response.headers["location"]
-
-
-async def test_oauth_callback_without_a_state_goes_back_to_login(
-    client, stub_session, provider
-):
-    client.cookies.set(cookies.OAUTH_VERIFIER_COOKIE, OAUTH_STATE_COOKIE_VALUE)
-
-    response = await client.get(
-        "/api/auth/callback", params={"code": "abc"}, follow_redirects=False
     )
 
     assert response.status_code == 303
@@ -759,7 +726,7 @@ async def test_oauth_callback_when_the_user_declines_goes_back_to_login(
     client, stub_session, provider
 ):
     """Consent denied: the provider sends `error` instead of a code."""
-    client.cookies.set(cookies.OAUTH_VERIFIER_COOKIE, OAUTH_STATE_COOKIE_VALUE)
+    client.cookies.set(cookies.OAUTH_VERIFIER_COOKIE, OAUTH_VERIFIER_COOKIE_VALUE)
 
     response = await client.get(
         "/api/auth/callback",
@@ -771,13 +738,13 @@ async def test_oauth_callback_when_the_user_declines_goes_back_to_login(
     assert "error=oauth" in response.headers["location"]
 
 
-async def test_oauth_callback_clears_the_state_cookie(client, stub_session, provider):
+async def test_oauth_callback_clears_the_verifier_cookie(client, stub_session, provider):
     stub_session.scalar_results = [None, None]
-    client.cookies.set(cookies.OAUTH_VERIFIER_COOKIE, OAUTH_STATE_COOKIE_VALUE)
+    client.cookies.set(cookies.OAUTH_VERIFIER_COOKIE, OAUTH_VERIFIER_COOKIE_VALUE)
 
     response = await client.get(
         "/api/auth/callback",
-        params={"code": "abc", "state": "state-value"},
+        params={"code": "abc"},
         follow_redirects=False,
     )
 
@@ -793,11 +760,11 @@ async def test_oauth_callback_with_a_failed_exchange_goes_back_to_login(
     client, stub_session, provider
 ):
     provider.raises = OAuthExchangeFailed("bad code")
-    client.cookies.set(cookies.OAUTH_VERIFIER_COOKIE, OAUTH_STATE_COOKIE_VALUE)
+    client.cookies.set(cookies.OAUTH_VERIFIER_COOKIE, OAUTH_VERIFIER_COOKIE_VALUE)
 
     response = await client.get(
         "/api/auth/callback",
-        params={"code": "abc", "state": "state-value"},
+        params={"code": "abc"},
         follow_redirects=False,
     )
 

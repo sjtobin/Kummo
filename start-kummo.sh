@@ -27,6 +27,15 @@ fi
 SUPABASE_URL=$(grep -E '^SUPABASE_URL=' "$ENV_FILE" | cut -d= -f2-)
 SUPABASE_API_KEY=$(grep -E '^SUPABASE_API_KEY=' "$ENV_FILE" | cut -d= -f2-)
 DATABASE_URL=$(grep -E '^DATABASE_URL=' "$ENV_FILE" | cut -d= -f2-)
+SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=$(
+  grep -E '^SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=' "$ENV_FILE" | cut -d= -f2- || true
+)
+SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=$(
+  grep -E '^SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=' "$ENV_FILE" | cut -d= -f2- || true
+)
+RESEND_API_KEY=$(
+  grep -E '^RESEND_API_KEY=' "$ENV_FILE" | cut -d= -f2- || true
+)
 
 for var in SUPABASE_URL SUPABASE_API_KEY DATABASE_URL; do
   if [ -z "${!var}" ]; then
@@ -38,7 +47,12 @@ for var in SUPABASE_URL SUPABASE_API_KEY DATABASE_URL; do
   fi
 done
 
+export SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID
+export SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET
+export RESEND_API_KEY
+
 echo "Environment: ${ENV}" >&2
+
 
 # --- Supabase (local only) ---
 STARTED_SUPABASE=false

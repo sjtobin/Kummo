@@ -46,6 +46,8 @@
     "keyword": "Stichwort",
     "keyword_placeholder": "z. B. Malen, Zoo, Töpfern…",
     "search_placeholder": "Suche…",
+    "location": "Ort",
+    "location_placeholder": "z.B. Mitte",
     "age_group": "Altersgruppe",
     "category": "Kategorie",
     "max_price": "Max. Preis (€)",
@@ -82,7 +84,7 @@
     "page_title": "Kummo — Aktivitäten für Familien & Senioren in Berlin",
     "meta_description": "Kummo — Familienfreundliche Aktivitäten in Berlin entdecken und direkt buchen.",
     "badge": "Kinder · Familien · Senioren",
-    "hero_title": "Ein unvergessliches Moment für die ganze Familie",
+    "hero_title": "Ein unvergesslicher Moment für die ganze Familie",
     "hero_image_alt": "Familienaktivitäten in Berlin",
     "hero_text": "Entdeckt Workshops, Sport und mehr. Findet gemeinsame Momente für Kinder, Eltern und Großeltern. In Sekunden gefunden, in einem Klick gebucht.",
     "cta_find": "Aktivitäten finden",
@@ -127,8 +129,9 @@
     "filters_title": "Filter",
     "map_aria": "Karte Berlin",
     "map_loading": "Karte wird geladen…",
-    "map_hint_one": "🗺️ {{count}} Aktivität in Berlin — Google Maps beim Go-Live einbinden",
-    "map_hint_other": "🗺️ {{count}} Aktivitäten in Berlin — Google Maps beim Go-Live einbinden"
+    "map_hint_one": "🗺️ {{count}} Aktivität in Berlin",
+    "map_hint_other": "🗺️ {{count}} Aktivitäten in Berlin",
+    "map_unavailable": "Die Karte ist in diesem Browser nicht verfügbar."
   },
 
   "activity": {
@@ -141,7 +144,8 @@
     "load_error": "Aktivitäten konnten nicht geladen werden.",
     "vendor_unknown": "Anbieter unbekannt",
     "address_unknown": "Adresse unbekannt",
-    "card_cta": "Details & Buchen",
+    "card_cta": "Details",
+    "card_book": "Buchen",
     "not_rated": "Noch nicht bewertet",
     "per_person": "pro Person",
     "capacity": "👥 Max. {{count}} Teilnehmer · ⏳ {{duration}}",

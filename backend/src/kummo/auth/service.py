@@ -69,7 +69,6 @@ class PendingIdentity:
 class OAuthRedirect:
     url: str
     code_verifier: str
-    state: str
 
 
 async def _client() -> AsyncClient:
@@ -257,11 +256,11 @@ async def sign_out(refresh_token: str, access_token: str = "") -> None:
 
 
 def build_oauth_redirect(provider: str, redirect_to: str) -> OAuthRedirect:
-    """Authorize URL for the provider, with a freshly minted PKCE verifier and state.
+    """Authorize URL for the provider, with a freshly minted PKCE verifier.
 
     Built by hand rather than through `sign_in_with_oauth` because that method keeps
     the verifier in the client's storage, which does not survive to the callback
-    request. The verifier and the state travel in an HttpOnly cookie instead.
+    request. The verifier travels in an HttpOnly cookie instead.
 
     PKCE alone would already stop an attacker's authorization code from being redeemed
     in somebody else's browser, since the verifier never leaves that browser. `state`
@@ -272,7 +271,6 @@ def build_oauth_redirect(provider: str, redirect_to: str) -> OAuthRedirect:
     verifier = secrets.token_urlsafe(64)
     digest = hashlib.sha256(verifier.encode("ascii")).digest()
     challenge = base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
-    state = secrets.token_urlsafe(32)
 
     query = urlencode(
         {
@@ -281,14 +279,12 @@ def build_oauth_redirect(provider: str, redirect_to: str) -> OAuthRedirect:
             "code_challenge": challenge,
             # RFC 7636 spells the method in uppercase.
             "code_challenge_method": "S256",
-            "state": state,
         }
     )
     base = get_settings().supabase_url.rstrip("/")
     return OAuthRedirect(
         url=f"{base}/auth/v1/authorize?{query}",
         code_verifier=verifier,
-        state=state,
     )
 
 

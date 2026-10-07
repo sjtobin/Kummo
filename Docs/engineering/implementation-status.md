@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Purpose** | The delta between the target described in [specification.md](specification.md) and the code that exists today |
-| **Reflects** | branch `feature/python-backend`, 16 August 2026 |
+| **Reflects** | branch `feat/container`, 29 August 2026 |
 | **Audience** | Developers picking up the next piece of work |
 
 > **How this document relates to the others.** [specification.md](specification.md) and
@@ -33,6 +33,7 @@ named · **Not started** — no code.
 | Accessibility | **Not started** | — |
 | i18n (DE/EN), interface | **Built** | `static/i18n/*.json`, `static/js/i18n.js` |
 | i18n, vendor-entered content | **Not started** | — |
+| Packaging & deployment | **Partial** (image only, no host) | `Dockerfile`, `compose.yaml` |
 
 ## 2. What is built
 
@@ -112,6 +113,17 @@ Covers FR-01, FR-05, and the [authentication flow](sequence-diagrams/00-authenti
 
 **Read/write API** — `GET /api/vendors`, `GET /api/activities` (optional `vendor_id` filter),
 `GET /api/activities/{id}`, `POST /api/activities`.
+
+**Packaging** — `Dockerfile` builds one image carrying the backend and the static site,
+served together on port 8000: dependencies resolved by `uv sync --locked --no-dev` into a
+separate stage, then a `python:3.12-slim` runtime running `fastapi run` as a non-root user,
+with a `HEALTHCHECK` on `GET /metrics`. `compose.yaml` runs it against an existing Supabase
+project, reading `.env`. The site's location is the `STATIC_DIR` setting
+(`Settings.static_dir`, a `DirectoryPath` defaulting to the repo's `static/`), so the image
+can lay it out where it likes and a wrong path fails at startup.
+
+The image starts no database and applies no migrations — `supabase migration up` stays a
+host-side task, per [ADR 0004](../decisions/0004-supabase-cli-single-migration-chain.md).
 
 ## 3. What remains
 
@@ -204,6 +216,11 @@ None of the structuring NFRs are addressed yet, and two of them
   activity titles, descriptions, addresses — is still shown as entered: that needs a schema
   change and a per-language vendor form, and is still open as DEC-04.
 - **Performance (NFR-30…31)** — no measurement; 3.5 works against it.
+- **Deployment (NFR-30…31 adjacent)** — there is an image and a compose file, but no host, no
+  TLS termination, no CI that builds or publishes it, and no place the `.env` for a real
+  deployment lives. `COOKIE_SECURE` and the security headers noted in §2 become required the
+  moment it is served over TLS, and the rate-limiting decision in §2 is the same deployment
+  decision.
 - **Email verification** — `enable_confirmations = false` in `supabase/config.toml`, and there is
   no password-reset route. FR-02 is therefore only half met.
 

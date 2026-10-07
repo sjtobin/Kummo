@@ -46,6 +46,8 @@
     "keyword": "Keyword",
     "keyword_placeholder": "e.g. painting, zoo, pottery…",
     "search_placeholder": "Search…",
+    "location": "Location",
+    "location_placeholder": "e.g. Mitte",
     "age_group": "Age group",
     "category": "Category",
     "max_price": "Max. price (€)",
@@ -127,8 +129,9 @@
     "filters_title": "Filters",
     "map_aria": "Map of Berlin",
     "map_loading": "Loading map…",
-    "map_hint_one": "🗺️ {{count}} activity in Berlin — Google Maps to be embedded at go-live",
-    "map_hint_other": "🗺️ {{count}} activities in Berlin — Google Maps to be embedded at go-live"
+    "map_hint_one": "🗺️ {{count}} activity in Berlin",
+    "map_hint_other": "🗺️ {{count}} activities in Berlin",
+    "map_unavailable": "Map unavailable in this browser."
   },
 
   "activity": {
@@ -141,7 +144,8 @@
     "load_error": "The activities could not be loaded.",
     "vendor_unknown": "Vendor unknown",
     "address_unknown": "Address unknown",
-    "card_cta": "Details & booking",
+    "card_cta": "Details",
+    "card_book": "Book",
     "not_rated": "Not rated yet",
     "per_person": "per person",
     "capacity": "👥 Max. {{count}} participants · ⏳ {{duration}}",

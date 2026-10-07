@@ -35,3 +35,28 @@ def test_plain_http_may_leave_cookies_insecure():
     )
 
     assert settings.cookie_secure is False
+
+
+def test_static_dir_defaults_to_the_repository_site():
+    """A source checkout needs no configuration: the default is the repo's static/."""
+    settings = Settings(**REQUIRED)
+
+    assert settings.static_dir.is_dir()
+    assert settings.static_dir.name == "static"
+    assert (settings.static_dir / "index.html").is_file()
+
+
+def test_static_dir_can_be_overridden(tmp_path):
+    """A deployment that lays the site out elsewhere says so with STATIC_DIR."""
+    site = tmp_path / "site"
+    site.mkdir()
+
+    settings = Settings(**REQUIRED, static_dir=site)
+
+    assert settings.static_dir == site
+
+
+def test_static_dir_must_exist(tmp_path):
+    """A wrong path fails at startup rather than serving 404s for the whole site."""
+    with pytest.raises(ValidationError):
+        Settings(**REQUIRED, static_dir=tmp_path / "absent")

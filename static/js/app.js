@@ -7,6 +7,8 @@
 // optional.
 let vendors = [];
 let activities = [];
+let searchMap = null;
+let searchMapMarkers = [];
 
 // localStorage keys (preferences, bookings, favorites)
 const STORAGE_PREFS = 'kummo_prefs';
@@ -119,7 +121,10 @@ ACTIVITY_CARD_TEMPLATE.innerHTML = `
       <h3 data-field="title"></h3>
       <p data-field="address"></p>
       <p data-field="details"></p>
-      <a class="btn btn-primary btn-sm stretched-link"></a>
+      <div class="activity-card-actions">
+        <a class="btn btn-outline btn-sm" data-action="details"></a>
+        <button type="button" class="btn btn-primary btn-sm activity-book-btn"></button>
+      </div>
     </div>
   </article>`;
 
@@ -138,9 +143,13 @@ function activityCardHtml(activity) {
   card.querySelector('[data-field="details"]').textContent =
     `💰 ${a.price ?? ''} € · 👥 ${a.participants_max ?? ''} · ⏳ ${a.duration ?? ''}`;
 
-  const link = card.querySelector('a');
-  link.href = `activity.html?id=${encodeURIComponent(a.id ?? '')}`;
-  link.textContent = t('activity.card_cta');
+  const detailsLink = card.querySelector('[data-action="details"]');
+  detailsLink.href = `activity.html?id=${encodeURIComponent(a.id ?? '')}`;
+  detailsLink.textContent = t('activity.card_cta');
+
+  const bookButton = card.querySelector('.activity-book-btn');
+  bookButton.textContent = t('activity.card_book');
+  bookButton.addEventListener('click', () => openBookingModal(a));
 
   return card;
 }
@@ -159,6 +168,7 @@ function renderActivityGrid(containerId, list) {
     container.replaceChildren(empty);
     return;
   }
+
   container.replaceChildren(...list.map(activityCardHtml));
 }
 
@@ -173,10 +183,16 @@ function filterActivities(filters) {
   return activities.filter((activity) => {
     const enriched = enrichActivity(activity);
     const q = (filters.q || '').toLowerCase().trim();
+    const location = (filters.location || '').toLowerCase().trim();
 
     if (q) {
       const haystack = `${activity.title} ${activity.description} ${enriched.vendorName}`.toLowerCase();
       if (!haystack.includes(q)) return false;
+    }
+
+    if (location) {
+      const address = (enriched.address || '').toLowerCase();
+      if (!address.includes(location)) return false;
     }
 
     if (filters.age && filters.age !== 'all') {
@@ -212,6 +228,7 @@ function readFiltersFromForm(form) {
   const fd = new FormData(form);
   return {
     q: fd.get('q') || '',
+    location: fd.get('location') || '',
     age: fd.get('age') || 'all',
     category: fd.get('category') || 'all',
     maxPrice: fd.get('maxPrice') || '',
@@ -240,6 +257,7 @@ function initSearchPage() {
   const params = new URLSearchParams(window.location.search);
   const filters = {
     q: params.get('q') || '',
+    location: params.get('location') || '',
     category: params.get('category') || 'all',
     age: params.get('age') || 'all',
     maxPrice: params.get('maxPrice') || '',
@@ -248,6 +266,7 @@ function initSearchPage() {
   const form = document.getElementById('filter-form');
   if (form) {
     if (filters.q) form.querySelector('[name="q"]').value = filters.q;
+    if (filters.location) form.querySelector('[name="location"]').value = filters.location;
     if (filters.category) form.querySelector('[name="category"]').value = filters.category;
     if (filters.age) form.querySelector('[name="age"]').value = filters.age;
     if (filters.maxPrice) form.querySelector('[name="maxPrice"]').value = filters.maxPrice;
@@ -255,19 +274,99 @@ function initSearchPage() {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const f = readFiltersFromForm(form);
-      renderActivityGrid('search-results', filterActivities(f));
-      updateMapHint(filterActivities(f).length);
+      const results = filterActivities(f);
+      renderActivityGrid('search-results', results);
+      renderSearchMap(results);
     });
   }
 
   const results = filterActivities(filters);
   renderActivityGrid('search-results', results);
-  updateMapHint(results.length);
+  renderSearchMap(results);
 }
 
-function updateMapHint(count) {
-  const map = document.getElementById('map-hint');
-  if (map) map.textContent = t('search.map_hint', { count });
+function renderSearchMap(activityList) {
+  const container = document.getElementById('search-map');
+  const maplibregl = globalThis.maplibregl;
+
+  if (!container || !maplibregl) return;
+
+  if (!searchMap) {
+    try {
+      searchMap = new maplibregl.Map({
+        container,
+        style: 'https://tiles.openfreemap.org/styles/liberty',
+        center: [13.405, 52.52],
+        zoom: 10,
+      });
+
+      searchMap.addControl(
+        new maplibregl.NavigationControl(),
+        'top-right'
+      );
+    } catch (error) {
+      console.warn('Map could not be initialized:', error);
+      container.innerHTML = `<div class="map-placeholder">${t('search.map_unavailable')}</div>`;
+      return;
+    }
+  }
+
+  searchMapMarkers.forEach((marker) => marker.remove());
+  searchMapMarkers = [];
+
+  const vendorsOnMap = new Map();
+
+  activityList.forEach((activity) => {
+    const vendor = enrichActivity(activity).vendor;
+
+    if (
+      !vendor ||
+      vendor.latitude == null ||
+      vendor.longitude == null
+    ) {
+      return;
+    }
+
+    vendorsOnMap.set(vendor.id, vendor);
+  });
+
+  const bounds = new maplibregl.LngLatBounds();
+
+  vendorsOnMap.forEach((vendor) => {
+    const coordinates = [
+      vendor.longitude,
+      vendor.latitude,
+    ];
+
+    const popup = new maplibregl.Popup({
+      offset: 25,
+    }).setText(`${vendor.name} — ${vendor.address}`);
+
+    const marker = new maplibregl.Marker()
+      .setLngLat(coordinates)
+      .setPopup(popup)
+      .addTo(searchMap);
+
+    searchMapMarkers.push(marker);
+    bounds.extend(coordinates);
+  });
+
+  if (vendorsOnMap.size === 1) {
+    searchMap.flyTo({
+      center: bounds.getCenter(),
+      zoom: 13,
+    });
+  } else if (vendorsOnMap.size > 1) {
+    searchMap.fitBounds(bounds, {
+      padding: 40,
+      maxZoom: 13,
+    });
+  } else {
+    searchMap.flyTo({
+      center: [13.405, 52.52],
+      zoom: 10,
+    });
+  }
 }
 
 // =============================================
@@ -319,9 +418,7 @@ function showActivityDetail() {
         </div>
       </div>
     </div>
-    <div class="map-panel">
-      <div class="map-placeholder" data-field="map"></div>
-    </div>
+    <div class="map-panel" id="activity-map"></div>
     <section class="section">
       <h2 data-field="similar-title"></h2>
       <div class="activity-grid" id="similar-activities"></div>
@@ -334,7 +431,8 @@ function showActivityDetail() {
   container.querySelector('[data-field="vendor"]').textContent = String(a.vendorName ?? '');
   container.querySelector('[data-field="age"]').textContent = String(a.age_group ?? '');
   container.querySelector('[data-field="title"]').textContent = String(a.title ?? '');
-  container.querySelector('[data-field="rating"]').textContent = `⭐ ${a.rating || t('activity.not_rated')}`;
+  container.querySelector('[data-field="rating"]').textContent =
+    `⭐ ${a.rating || t('activity.not_rated')}`;
   container.querySelector('[data-field="price"]').textContent = String(a.price ?? '');
   container.querySelector('[data-field="per-person"]').textContent = t('activity.per_person');
   container.querySelector('[data-field="address"]').textContent = `📍 ${a.address ?? ''}`;
@@ -343,8 +441,10 @@ function showActivityDetail() {
       count: a.participants_max,
       duration: a.duration,
     });
-  container.querySelector('[data-field="description"]').textContent = String(a.description ?? '');
-  container.querySelector('[data-field="slots-title"]').textContent = t('activity.slots_title');
+  container.querySelector('[data-field="description"]').textContent =
+    String(a.description ?? '');
+  container.querySelector('[data-field="slots-title"]').textContent =
+    t('activity.slots_title');
 
   const slots = container.querySelector('[data-field="slots"]');
   for (const value of a.disponibilites || []) {
@@ -356,9 +456,18 @@ function showActivityDetail() {
 
   container.querySelector('#open-booking').textContent = t('activity.book_now');
   container.querySelector('#toggle-fav').textContent = favoriteLabel(a.id);
-  container.querySelector('[data-field="map"]').textContent =
-    t('activity.map_label', { address: a.address ?? '' });
-  container.querySelector('[data-field="similar-title"]').textContent = t('activity.similar_title');
+  container.querySelector('[data-field="similar-title"]').textContent =
+    t('activity.similar_title');
+
+  const activityMap = container.querySelector('#activity-map');
+  if (activityMap) {
+    activityMap.setAttribute(
+      'aria-label',
+      t('activity.map_label', { address: a.address ?? '' })
+    );
+  }
+
+  renderActivityMap(a);
 
   const similar = activities
     .filter((x) => x.id !== activity.id && x.vendor_id === activity.vendor_id)
@@ -377,6 +486,63 @@ function showActivityDetail() {
     toggleFavorite(a.id);
     e.target.textContent = favoriteLabel(a.id);
   });
+}
+
+function renderActivityMap(activity) {
+  const container = document.getElementById('activity-map');
+  const maplibregl = globalThis.maplibregl;
+  const vendor = activity.vendor;
+
+  if (!container) return;
+
+  if (
+    !maplibregl ||
+    !vendor ||
+    vendor.latitude == null ||
+    vendor.longitude == null
+  ) {
+    container.innerHTML = `
+      <div class="map-placeholder">
+        ${t('activity.map_label', { address: activity.address })}
+      </div>
+    `;
+    return;
+  }
+
+  const coordinates = [
+    vendor.longitude,
+    vendor.latitude,
+  ];
+
+  try {
+    const map = new maplibregl.Map({
+      container,
+      style: 'https://tiles.openfreemap.org/styles/liberty',
+      center: coordinates,
+      zoom: 14,
+    });
+
+    map.addControl(
+      new maplibregl.NavigationControl(),
+      'top-right'
+    );
+
+    new maplibregl.Marker()
+      .setLngLat(coordinates)
+      .setPopup(
+        new maplibregl.Popup({ offset: 25 })
+          .setText(`${vendor.name} — ${vendor.address}`)
+      )
+      .addTo(map);
+  } catch (error) {
+    console.warn('Activity map could not be initialized:', error);
+
+    container.innerHTML = `
+      <div class="map-placeholder">
+        ${t('activity.map_label', { address: activity.address })}
+      </div>
+    `;
+  }
 }
 
 function favoriteLabel(id) {

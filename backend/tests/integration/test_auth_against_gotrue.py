@@ -16,7 +16,7 @@ from uuid import uuid4
 
 import pytest
 
-from kummo.auth import service, tokens
+from kummo.auth import cookies, service, tokens
 from kummo.auth.errors import (
     EmailNotConfirmed,
     InvalidCredentials,
@@ -108,6 +108,43 @@ async def test_confirming_the_link_produces_a_verifiable_session():
 
     identity = await tokens.verify_access_token(session.access_token)
     assert identity.email == email
+
+
+async def test_confirmation_route_sets_session_cookies_and_authenticates(db_client):
+    email = unique_email()
+
+    registered = await db_client.post(
+        "/api/auth/register/client",
+        json={
+            "email": email,
+            "password": PASSWORD,
+            "first_name": "Anna",
+            "last_name": "Schmidt",
+        },
+    )
+
+    assert registered.status_code == 202
+
+    token_hash = await confirmation_token_hash(email)
+
+    confirmed = await db_client.get(
+        "/api/auth/confirm",
+        params={"token_hash": token_hash, "type": "email"},
+        follow_redirects=False,
+    )
+
+    assert confirmed.status_code == 303
+
+    issued = {
+        header.split("=", 1)[0]
+        for header in confirmed.headers.get_list("set-cookie")
+    }
+    assert cookies.SESSION_COOKIE in issued
+    assert cookies.REFRESH_COOKIE in issued
+
+    me = await db_client.get("/api/auth/me")
+
+    assert me.status_code == 200
 
 
 async def test_signing_in_returns_a_usable_session():

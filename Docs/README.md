@@ -83,10 +83,10 @@ with **Podman**, exports the following:
 pnpm install
 pnpm db:start       # starts local Supabase (first run pulls Docker images)
 pnpm db:reset       # applies all migrations + seeds test data
-pnpm serve          # serves the static site on port 5500
+pnpm start          # starts Kummo locally at http://localhost:8000
 ```
 
-Open `http://localhost:5500?dev=true` — the app reads from the local Supabase instance.
+Open `http://localhost:8000` — the app reads from the local Supabase instance.
 
 **Dev mode activation (pick one):**
 - URL param: append `?dev=true` to any page URL

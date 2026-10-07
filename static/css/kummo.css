@@ -451,6 +451,17 @@ a.nav-session:focus-visible {
   flex-direction: column;
 }
 
+.activity-card-actions {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.activity-card-actions .btn {
+  width: 100%;
+}
 .activity-meta {
   display: flex;
   flex-wrap: wrap;
@@ -489,16 +500,6 @@ a.nav-session:focus-visible {
 .activity-card .rating {
   color: var(--ultrasonic);
   font-weight: 600;
-}
-
-.stretched-link::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-}
-
-.activity-card {
-  position: relative;
 }
 
 /* Steps */

@@ -116,6 +116,10 @@ describe('filterActivities', () => {
     expect(app.filterActivities({ q: 'van gogh' }).map((a) => a.id)).toEqual(['a1']);
   });
 
+  it('filters by location using the vendor address', () => {
+    expect(app.filterActivities({ location: 'kreuzberg' }).map((a) => a.id)).toEqual(['a1']);
+  });
+
   it('applies a maximum price', () => {
     expect(app.filterActivities({ maxPrice: '30' }).map((a) => a.id)).toEqual(['a1']);
   });

@@ -11,6 +11,8 @@ class Vendor(BaseModel):
     id: UUID
     name: str
     address: str
+    latitude: float | None = None
+    longitude: float | None = None
     phone: str | None = None
     email: str
     website: str | None = None
