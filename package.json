@@ -10,7 +10,6 @@
     "test:watch": "vitest",
     "start": "bash start-kummo.sh local",
     "start:prod": "bash start-kummo.sh prod",
-    "serve": "pnpm dlx serve -l 5500 .",
     "db:start": "pnpm exec supabase start",
     "db:stop": "pnpm exec supabase stop",
     "db:reset": "pnpm exec supabase db reset"

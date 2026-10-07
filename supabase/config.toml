@@ -247,7 +247,7 @@ otp_expiry = 3600
 # port = 587
 # user = "resend"
 # pass = "env(RESEND_API_KEY)"
-# admin_email = "onboarding@resend.dev"
+# admin_email = "no-reply@auth.kummo.fun"
 # sender_name = "Kummo"
 
 # The confirmation link points at our own backend rather than at GoTrue's /verify: the
