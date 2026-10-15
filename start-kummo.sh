@@ -37,6 +37,10 @@ RESEND_API_KEY=$(
   grep -E '^RESEND_API_KEY=' "$ENV_FILE" | cut -d= -f2- || true
 )
 
+APP_BASE_URL=$(grep -E '^APP_BASE_URL=' "$ENV_FILE" | cut -d= -f2- || true)
+COOKIE_SECURE=$(grep -E '^COOKIE_SECURE=' "$ENV_FILE" | cut -d= -f2- || true)
+LOG_LEVEL=$(grep -E '^LOG_LEVEL=' "$ENV_FILE" | cut -d= -f2- || true)
+
 for var in SUPABASE_URL SUPABASE_API_KEY DATABASE_URL; do
   if [ -z "${!var}" ]; then
     echo >&2
@@ -50,8 +54,62 @@ done
 export SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID
 export SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET
 export RESEND_API_KEY
+export APP_BASE_URL COOKIE_SECURE LOG_LEVEL
 
 echo "Environment: ${ENV}" >&2
+
+# env var compatibility checks
+if [[ "$ENV" == "local" ]]; then
+
+    [[ "$SUPABASE_URL" == "http://127.0.0.1:54321" ]] || {
+        echo "ERROR: local mode must use local Supabase Auth" >&2
+        exit 1
+    }
+
+    [[ "$DATABASE_URL" == *"127.0.0.1:54322"* ]] || {
+        echo "ERROR: local mode must use local PostgreSQL" >&2
+        exit 1
+    }
+
+    [[ "$APP_BASE_URL" == "http://localhost:8000" ]] || {
+        echo "ERROR: incorrect local application URL" >&2
+        exit 1
+    }
+
+    [[ "$COOKIE_SECURE" == "false" ]] || {
+        echo "ERROR: local cookies must use the local setting" >&2
+        exit 1
+    }
+
+elif [[ "$ENV" == "prod" ]]; then
+
+    [[ "$SUPABASE_URL" == "https://xusuvidhmuyzpfrtxutd.supabase.co" ]] || {
+        echo "ERROR: production must use hosted Supabase" >&2
+        exit 1
+    }
+
+    [[ "$DATABASE_URL" != *"127.0.0.1"* &&
+       "$DATABASE_URL" != *"localhost"* ]] || {
+        echo "ERROR: production database must not be local" >&2
+        exit 1
+    }
+
+    [[ "$APP_BASE_URL" == "https://kummo.fun" &&
+       "$COOKIE_SECURE" == "true" ]] || {
+        echo "ERROR: production requires HTTPS and secure cookies" >&2
+        exit 1
+    }
+
+    [[ "$DATABASE_URL" != *"REPLACE_WITH"* &&
+       "$DATABASE_URL" != *"YOUR_PASSWORD"* ]] || {
+        echo "ERROR: production database password is unresolved" >&2
+        exit 1
+    }
+
+else
+    echo "ERROR: environment must be local or prod" >&2
+    exit 1
+fi
 
 
 # --- Supabase (local only) ---

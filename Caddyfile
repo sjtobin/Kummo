@@ -1,0 +1,4 @@
+kummo.fun {
+	encode zstd gzip
+	reverse_proxy kummo:8000
+}

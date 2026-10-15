@@ -2,7 +2,7 @@
 # repo root because the image needs both backend/ and static/.
 .git
 .gitignore
-.env*
+**/.env*
 !backend/.env.example
 
 node_modules/
