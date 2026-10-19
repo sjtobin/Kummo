@@ -1,4 +1,10 @@
 kummo.fun {
 	encode zstd gzip
+
+	@internal {
+		path /metrics /docs /redoc /openapi.json
+	}
+	respond @internal 404
+
 	reverse_proxy kummo:8000
 }
