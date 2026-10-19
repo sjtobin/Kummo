@@ -5,6 +5,8 @@
 **/.env*
 !backend/.env.example
 
+/secrets/
+
 node_modules/
 coverage/
 site/

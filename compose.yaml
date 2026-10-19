@@ -23,6 +23,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    secrets:
+      - caddy_preview_hash
 
     volumes:
       # Configuration: read-only, and fail if the file is missing.
@@ -46,3 +48,7 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+
+secrets:
+  caddy_preview_hash:
+    file: ./secrets/caddy_preview_hash

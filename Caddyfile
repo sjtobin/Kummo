@@ -1,10 +1,21 @@
 kummo.fun {
-	encode zstd gzip
+        encode zstd gzip
 
-	@internal {
-		path /metrics /docs /redoc /openapi.json
-	}
-	respond @internal 404
+        @internal {
+            path /metrics /docs /redoc /openapi.json
+        }
+        respond @internal 404
 
-	reverse_proxy kummo:8000
+        handle {
+                basic_auth {
+                    preview {file./run/secrets/caddy_preview_hash} 
+                }
+
+                reverse_proxy kummo:8000
+        }
+
+        handle_errors 502 503 {
+                respond "Kummo is temporarily unavailable. Please try again shortly." 503
+        }
 }
+
